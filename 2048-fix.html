@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>2048 — Dark theme remake</title>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #121820;
+      --grid: #0f1620;
+      --gap: 12px;
+      --tile-radius: 12px;
+      --text: #e7edf5;
+      --muted: #8b9bb0;
+      --accent: #5ac8fa;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 800px at 70% -10%, #16202b 0%, var(--bg) 60%) fixed;
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .app {
+      width: min(92vw, 520px);
+      display: grid;
+      gap: 16px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(22px, 4vw, 32px);
+      letter-spacing: 0.5px;
+      font-weight: 800;
+      display: flex; align-items: center; gap: 12px;
+    }
+    h1 .badge { 
+      font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--bg); 
+      background: var(--accent); padding: 4px 8px; border-radius: 999px; text-transform: uppercase; 
+    }
+
+    .stats {
+      display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end;
+    }
+
+    .card {
+      background: linear-gradient(180deg, #121a24, #0e141c);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 10px 12px;
+      min-width: 86px; text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .card .label { color: var(--muted); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+    .card .value { font-size: 20px; font-weight: 800; margin-top: 2px; }
+
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      appearance: none; border: 0; cursor: pointer; user-select: none;
+      background: linear-gradient(180deg, #1b2430, #121a24);
+      color: var(--text); font-weight: 700; letter-spacing: 0.5px;
+      padding: 10px 14px; border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05);
+      transition: transform .06s ease, filter .1s ease;
+    }
+    .btn:active { transform: translateY(1px); filter: brightness(0.95); }
+
+    .board-wrap {
+      position: relative; width: 100%; aspect-ratio: 1 / 1; /* square */
+      background: linear-gradient(180deg, #0f1620, #0b1017);
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: var(--gap);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03);
+      overflow: hidden;
+    }
+
+    .grid-bg {
+      position: absolute; inset: var(--gap);
+      display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
+      gap: var(--gap);
+    }
+    .grid-bg div {
+      background: #121821; border-radius: var(--tile-radius);
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+
+    .tiles { position: absolute; inset: var(--gap); }
+    .tile {
+      position: absolute; display: grid; place-items: center;
+      width: var(--size); height: var(--size);
+      border-radius: var(--tile-radius);
+      font-weight: 900; font-size: clamp(22px, 7vw, 34px);
+      will-change: transform; transition: transform 120ms ease-in, filter 100ms ease-in;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.06);
+      transform: translate(var(--x), var(--y)) scale(1);
+    }
+    .tile.new { animation: pop 160ms ease-out; }
+    .tile.merged { animation: pulse 160ms ease-out; }
+
+    @keyframes pop { from { transform: translate(var(--x), var(--y)) scale(0.4); } to { transform: translate(var(--x), var(--y)) scale(1); } }
+    @keyframes pulse { 0% { transform: translate(var(--x), var(--y)) scale(1.15); } 100% { transform: translate(var(--x), var(--y)) scale(1); } }
+
+    .overlay {
+      position: absolute; inset: 0; display: none; place-items: center; backdrop-filter: blur(2px);
+      background: rgba(10, 14, 20, 0.5);
+    }
+    .overlay.show { display: grid; }
+    .dialog {
+      background: linear-gradient(180deg, #141b24, #0e141c);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 22px; border-radius: 16px; text-align: center; width: min(92vw, 360px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .dialog h2 { margin: 0 0 8px; }
+    .dialog p { margin: 0 0 16px; color: var(--muted); }
+
+    /* Arrow pad for mobile */
+    .dpad {
+      display: grid; grid-template-columns: 60px 60px 60px; grid-template-rows: 60px 60px 60px; gap: 8px;
+      justify-content: center; margin: 6px auto 0; touch-action: manipulation;
+    }
+    .dpad .spacer { visibility: hidden; }
+    .padbtn {
+      width: 60px; height: 60px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, #1b2430, #121a24); color: var(--text); font-size: 18px; font-weight: 800;
+      display: grid; place-items: center; user-select: none; -webkit-tap-highlight-color: transparent; cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    .hint { text-align: center; color: var(--muted); font-size: 12px; }
+
+    /* Tile color palette */
+    .t2   { background: #1f2a36; color: #d3e3ff; }
+    .t4   { background: #1e2f3f; color: #dce9ff; }
+    .t8   { background: #17364a; color: #eaf6ff; }
+    .t16  { background: #0f3d5a; color: #f3fbff; }
+    .t32  { background: #0d465f; color: #f8fdff; }
+    .t64  { background: #0b4f63; color: white; }
+    .t128 { background: #0d5b7a; color: white; font-size: 28px; }
+    .t256 { background: #0e6a8f; color: white; font-size: 28px; }
+    .t512 { background: #0f79a3; color: white; font-size: 28px; }
+    .t1024{ background: #118ab8; color: white; font-size: 24px; }
+    .t2048{ background: #12a1d3; color: #001018; font-size: 24px; }
+    .t4096{ background: #37b6e6; color: #001018; font-size: 22px; }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="topbar">
+      <h1>2048 <span class="badge">Dark</span></h1>
+      <div class="stats">
+        <div class="card" aria-live="polite"><div class="label">Score</div><div id="score" class="value">0</div></div>
+        <div class="card"><div class="label">Best</div><div id="best" class="value">0</div></div>
+        <div class="controls">
+          <button class="btn" id="newGame" title="Start a new game (N)">New Game</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="board-wrap" id="board" role="application" aria-label="2048 board">
+      <div class="grid-bg" aria-hidden="true">
+        <div></div><div></div><div></div><div></div>
+        <div></div><div></div><div></div><div></div>
+        <div></div><div></div><div></div><div></div>
+        <div></div><div></div><div></div><div></div>
+      </div>
+      <div class="tiles" id="tiles" aria-live="polite"></div>
+      <div class="overlay" id="overlay">
+        <div class="dialog">
+          <h2 id="overlayTitle">Game Over</h2>
+          <p id="overlayMsg">No more moves. Want to try again?</p>
+          <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:8px;">
+            <button class="btn" id="retryBtn">Try Again</button>
+            <button class="btn" id="keepBtn" style="display:none;">Keep Going</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dpad" aria-label="Direction pad">
+      <div class="spacer"></div>
+      <button class="padbtn" data-dir="up" aria-label="Up">▲</button>
+      <div class="spacer"></div>
+      <button class="padbtn" data-dir="left" aria-label="Left">◀</button>
+      <div class="spacer"></div>
+      <button class="padbtn" data-dir="right" aria-label="Right">▶</button>
+      <div class="spacer"></div>
+      <button class="padbtn" data-dir="down" aria-label="Down">▼</button>
+      <div class="spacer"></div>
+    </div>
+    <div class="hint">Swipe, use arrow keys / WASD, or tap the pad. Press N for a new game.</div>
+  </div>
+
+ <script src="https://chompypotato.github.io/2048.js"></script>
+
+</body>
+</html>
